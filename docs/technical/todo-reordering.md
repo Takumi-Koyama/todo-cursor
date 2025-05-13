@@ -16,24 +16,26 @@ public function reorder(Request $request)
     $oldPosition = $todo->sort_order;
     $newPosition = $request->newPosition;
     
-    // 1回のクエリで、影響を受けるアイテムのみ一括更新
-    if ($oldPosition > $newPosition) {
-        // 上に移動: その間のアイテムを下にシフト
-        Todo::where('user_id', auth()->id())
-            ->where('sort_order', '>=', $newPosition)
-            ->where('sort_order', '<', $oldPosition)
-            ->increment('sort_order');
-    } else {
-        // 下に移動: その間のアイテムを上にシフト
-        Todo::where('user_id', auth()->id())
-            ->where('sort_order', '>', $oldPosition)
-            ->where('sort_order', '<=', $newPosition)
-            ->decrement('sort_order');
-    }
-    
-    // 移動したアイテム自体を更新
-    $todo->sort_order = $newPosition;
-    $todo->save();
+    // トランザクションで一括更新
+    DB::transaction(function () use ($todo, $oldPosition, $newPosition) {
+        if ($oldPosition > $newPosition) {
+            // 上に移動: その間のアイテムを下にシフト
+            Todo::where('user_id', auth()->id())
+                ->where('sort_order', '>=', $newPosition)
+                ->where('sort_order', '<', $oldPosition)
+                ->increment('sort_order');
+        } else {
+            // 下に移動: その間のアイテムを上にシフト
+            Todo::where('user_id', auth()->id())
+                ->where('sort_order', '>', $oldPosition)
+                ->where('sort_order', '<=', $newPosition)
+                ->decrement('sort_order');
+        }
+        
+        // 移動したアイテム自体を更新
+        $todo->sort_order = $newPosition;
+        $todo->save();
+    });
     
     return response()->json(['success' => true]);
 }
