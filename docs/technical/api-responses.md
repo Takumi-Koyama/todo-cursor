@@ -181,25 +181,6 @@ class TodoDashboardController extends Controller
     }
 }
 ```
-
-## 追加データの含め方
-
-```php
-public function toArray(Request $request): array
-{
-    return [
-        'id' => $this->id,
-        'title' => $this->title,
-        // 他の属性...
-        
-        // 追加の属性やメソッド結果を含める
-        'is_overdue' => $this->isOverdue(),
-        'days_left' => $this->daysLeft(),
-        
-        // 権限情報を含める
-        'can_edit' => $request->user() ? $request->user()->can('update', $this->resource) : false,
-    ];
-}
 ```
 
 ## エラーレスポンスの形式
@@ -218,15 +199,3 @@ return response()->json([
 // バリデーションエラーの例
 // FormRequestでは自動的にフォーマットされます
 ```
-
-## 結論
-
-`JsonResource`を使用したAPIレスポンスにより、以下の利点があります：
-
-1. レスポンス構造の一貫性
-2. コード再利用性の向上
-3. モデルとAPIレスポンスの明確な分離
-4. 複合データの柔軟な構成
-5. バージョン管理とAPIの進化が容易
-
-APIレスポンスは、クライアントとサーバー間のインターフェースとして重要な役割を果たすため、設計と実装には十分な注意を払います。 
