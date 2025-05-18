@@ -253,31 +253,116 @@ namespace App\Http\Controllers\Api\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Auth\LoginRequest;
 use App\Http\Resources\Auth\AuthTokenResource;
-use App\Models\User;
-use Illuminate\Support\Facades\Hash;
+use App\Services\Auth\AuthService;
+use Illuminate\Http\JsonResponse;
 
 class LoginController extends Controller
 {
-    public function login(LoginRequest $request)
+    /**
+     * ユーザーログイン処理
+     *
+     * @param  \App\Http\Requests\Api\Auth\LoginRequest  $request
+     * @param  \App\Services\Auth\AuthService  $authService
+     * @return \Illuminate\Http\JsonResponse|\App\Http\Resources\Auth\AuthTokenResource
+     */
+    public function login(LoginRequest $request, AuthService $authService)
     {
+        // バリデーション済みデータの取得
         $validated = $request->validated();
         
-        $user = User::where('email', $validated['email'])->first();
-
-        if (!$user || !Hash::check($validated['password'], $user->password)) {
+        // 認証処理をサービスに委譲
+        $result = $authService->authenticateUser($validated['email'], $validated['password']);
+        
+        // 認証失敗
+        if (!$result) {
             return response()->json([
                 'message' => '認証に失敗しました',
                 'error' => 'メールアドレスまたはパスワードが正しくありません'
             ], 401);
         }
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-        $expiresIn = config('sanctum.expiration', 60 * 24) * 60;
-
-        return new AuthTokenResource($user, $token, $expiresIn);
+        
+        // 認証成功：リソースを使用してレスポンスを返却
+        return new AuthTokenResource(
+            $result['user'], 
+            $result['token'], 
+            $result['expires_in']
+        );
     }
 }
 ```
+
+#### サービスクラスの実装
+
+```php
+<?php
+
+namespace App\Services\Auth;
+
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+
+class AuthService
+{
+    /**
+     * ユーザー認証を行う
+     *
+     * @param string $email メールアドレス
+     * @param string $password パスワード
+     * @return array|null 認証成功時はユーザーとトークン情報、失敗時はnull
+     */
+    public function authenticateUser(string $email, string $password): ?array
+    {
+        // ユーザー検索
+        $user = User::where('email', $email)->first();
+
+        // 認証チェック
+        if (!$user || !Hash::check($password, $user->password)) {
+            return null;
+        }
+
+        // トークン作成
+        $token = $user->createToken('auth_token')->plainTextToken;
+        $expiresIn = config('sanctum.expiration', 60 * 24) * 60;
+
+        return [
+            'user' => $user,
+            'token' => $token,
+            'expires_in' => $expiresIn
+        ];
+    }
+}
+```
+
+## サービスレイヤーパターンの活用
+
+上記のリファクタリング例では、サービスレイヤーパターンを活用してビジネスロジックをコントローラーから分離しています。このパターンの利点は以下の通りです：
+
+1. **コントローラーがスリムに**: コントローラーはHTTPリクエスト/レスポンスの処理に集中し、ビジネスロジックは別のクラスに委譲されます
+2. **再利用性の向上**: 認証ロジックは複数の場所から利用できるようになります
+3. **テスト容易性**: サービスクラスは単体でテスト可能です
+4. **拡張性**: 新しい認証方法を追加する場合も、サービスクラスの拡張だけで対応できます
+
+詳細については、[サービスレイヤーパターン](./service-layer.md)のドキュメントを参照してください。
+
+## ベストプラクティス
+
+1. **責務の分離**:
+   - コントローラー: HTTPリクエスト/レスポンスの処理
+   - FormRequest: バリデーション
+   - Service: ビジネスロジック
+   - Resource: レスポンスの整形
+
+2. **PHPドキュメント**:
+   - すべてのクラスとメソッドには適切なPHPDocを記述する
+   - パラメータと戻り値の型を明示する
+
+3. **型の活用**:
+   - メソッドのパラメータと戻り値に型宣言を使用する
+   - nullable型（例: ?array）を適切に活用する
+
+4. **例外処理**:
+   - 予期せぬエラーには例外を投げる
+   - グローバルな例外ハンドラーでキャッチして適切なレスポンスに変換する
 
 ## 一般的なベストプラクティス
 
