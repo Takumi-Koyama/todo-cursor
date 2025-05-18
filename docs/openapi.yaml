@@ -1,0 +1,250 @@
+openapi: 3.0.3
+info:
+  title: TODOアプリ API
+  description: TODOアプリのAPI仕様書
+  version: 1.0.0
+servers:
+  - url: /api/v1
+    description: APIバージョン1
+
+components:
+  schemas:
+    # Auth関連のリクエスト
+    AuthLoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: "yamada@example.com"
+        password:
+          type: string
+          format: password
+          example: "password123"
+      required:
+        - email
+        - password
+    
+    AuthRegisterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "山田太郎"
+        email:
+          type: string
+          format: email
+          example: "yamada@example.com"
+        password:
+          type: string
+          format: password
+          example: "password123"
+        password_confirmation:
+          type: string
+          format: password
+          example: "password123"
+      required:
+        - name
+        - email
+        - password
+        - password_confirmation
+    
+    # Auth関連のレスポンス
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          example: "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9..."
+        token_type:
+          type: string
+          example: "Bearer"
+        expires_in:
+          type: integer
+          example: 3600
+    
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: "山田太郎"
+        email:
+          type: string
+          format: email
+          example: "yamada@example.com"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - email
+        - created_at
+        - updated_at
+    
+    # 共通レスポンス
+    SuccessResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "操作が成功しました"
+    
+    # エラーレスポンス
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "エラーが発生しました"
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            email: ["正しいメールアドレスを入力してください", "このメールアドレスは既に登録されています"]
+    
+    ValidationErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "入力内容に問題があります"
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            email: ["正しいメールアドレス形式で入力してください"]
+            password: ["パスワードは8文字以上で入力してください"]
+    
+    AuthErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "認証に失敗しました"
+        error:
+          type: string
+          example: "メールアドレスまたはパスワードが正しくありません"
+  
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+paths:
+  /auth/register:
+    post:
+      summary: ユーザー登録
+      description: 新規ユーザーを登録します
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRegisterRequest'
+      responses:
+        '201':
+          description: ユーザー登録成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/UserResponse'
+        '422':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+  
+  /auth/login:
+    post:
+      summary: ログイン
+      description: 登録済みユーザーがログインします
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthLoginRequest'
+      responses:
+        '200':
+          description: ログイン成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/TokenResponse'
+                  - type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: 認証エラー（メールアドレスまたはパスワードが不正）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthErrorResponse'
+        '422':
+          description: バリデーションエラー（入力形式が不正）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+  
+  /auth/logout:
+    post:
+      summary: ログアウト
+      description: ログイン中のユーザーをログアウトします。未認証または無効なトークンの場合も成功レスポンスを返します。
+      operationId: logoutUser
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: ログアウト成功（既にログアウト済みの場合も含む）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  
+  /auth/user:
+    get:
+      summary: ログイン中のユーザー情報を取得
+      description: 現在ログインしているユーザーの情報を取得します
+      operationId: getCurrentUser
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: ユーザー情報取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: 認証エラー（未認証またはトークンが無効）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthErrorResponse' 
