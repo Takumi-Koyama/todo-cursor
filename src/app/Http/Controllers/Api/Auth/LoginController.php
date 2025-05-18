@@ -3,31 +3,29 @@
 namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\Auth\LoginRequest;
+use App\Http\Resources\Auth\AuthTokenResource;
 use App\Models\User;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
 
 class LoginController extends Controller
 {
     /**
      * ユーザーログイン処理
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Http\Requests\Api\Auth\LoginRequest  $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function login(Request $request)
+    public function login(LoginRequest $request)
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|string',
-        ]);
-
+        // バリデーション済みデータの取得
+        $validated = $request->validated();
+        
         // ユーザー検索
-        $user = User::where('email', $request->email)->first();
+        $user = User::where('email', $validated['email'])->first();
 
         // 認証チェック
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$user || !Hash::check($validated['password'], $user->password)) {
             return response()->json([
                 'message' => '認証に失敗しました',
                 'error' => 'メールアドレスまたはパスワードが正しくありません'
@@ -36,18 +34,9 @@ class LoginController extends Controller
 
         // トークン作成
         $token = $user->createToken('auth_token')->plainTextToken;
+        $expiresIn = config('sanctum.expiration', 60 * 24) * 60;
 
-        return response()->json([
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-            'expires_in' => config('sanctum.expiration', 60 * 24) * 60,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'created_at' => $user->created_at,
-                'updated_at' => $user->updated_at,
-            ],
-        ]);
+        // リソースを使用してレスポンスを返却
+        return new AuthTokenResource($user, $token, $expiresIn);
     }
-} 
+}
