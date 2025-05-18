@@ -3,27 +3,25 @@
 namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\Auth\RegisterRequest;
+use App\Http\Resources\UserResource;
 use App\Models\User;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password;
 
 class RegisterController extends Controller
 {
     /**
      * 新規ユーザー登録処理
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Http\Requests\Api\Auth\RegisterRequest  $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function register(Request $request)
+    public function register(RegisterRequest $request)
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => ['required', 'string', 'confirmed', Password::min(8)],
-        ]);
-
+        // バリデーション済みデータの取得
+        $validated = $request->validated();
+        
+        // ユーザー作成
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
@@ -32,7 +30,7 @@ class RegisterController extends Controller
 
         return response()->json([
             'message' => 'ユーザー登録が完了しました',
-            'user' => $user
+            'user' => new UserResource($user)
         ], 201);
     }
 } 
