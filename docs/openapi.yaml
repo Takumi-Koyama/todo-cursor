@@ -49,6 +49,55 @@ components:
         - password
         - password_confirmation
     
+    # パスワードリセット関連のリクエスト
+    PasswordResetRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: "yamada@example.com"
+      required:
+        - email
+    
+    PasswordResetTokenCheckRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          example: "a1b2c3d4e5f6g7h8i9j0"
+        email:
+          type: string
+          format: email
+          example: "yamada@example.com"
+      required:
+        - token
+        - email
+    
+    PasswordResetUpdateRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          example: "a1b2c3d4e5f6g7h8i9j0"
+        email:
+          type: string
+          format: email
+          example: "yamada@example.com"
+        password:
+          type: string
+          format: password
+          example: "newpassword123"
+        password_confirmation:
+          type: string
+          format: password
+          example: "newpassword123"
+      required:
+        - token
+        - email
+        - password
+        - password_confirmation
+    
     # Auth関連のレスポンス
     TokenResponse:
       type: object
@@ -244,4 +293,179 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthErrorResponse' 
+                $ref: '#/components/schemas/AuthErrorResponse'
+  
+  /auth/password/forgot:
+    post:
+      summary: パスワードリセットリクエスト
+      description: パスワードをリセットするためのリンクを含むメールを送信します。セキュリティ上の理由から、登録済みメールアドレスでなくても同じ成功レスポンスを返します。
+      operationId: forgotPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+      responses:
+        '200':
+          description: パスワードリセットリンクを送信しました（メールアドレスが存在しない場合も同じレスポンスを返します）
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "パスワードリセットリンクを送信しました。メールをご確認ください。"
+        '422':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "入力内容に問題があります"
+                  errors:
+                    type: object
+                    properties:
+                      email:
+                        type: array
+                        items:
+                          type: string
+                        example:
+                          - "メールアドレスは必須です"
+                          - "正しいメールアドレス形式で入力してください"
+  
+  /auth/password/reset/check:
+    post:
+      summary: パスワードリセットトークン検証
+      description: パスワードリセットトークンの有効性を確認します
+      operationId: checkResetToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetTokenCheckRequest'
+      responses:
+        '200':
+          description: 有効なトークンです
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "トークンは有効です。新しいパスワードを設定してください。"
+        '422':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "入力内容に問題があります"
+                  errors:
+                    type: object
+                    properties:
+                      token:
+                        type: array
+                        items:
+                          type: string
+                        example:
+                          - "トークンは必須です"
+                      email:
+                        type: array
+                        items:
+                          type: string
+                        example:
+                          - "メールアドレスは必須です"
+                          - "正しいメールアドレス形式で入力してください"
+        '400':
+          description: 無効なトークンまたは期限切れ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "無効なトークンまたは期限切れです。再度パスワードリセットをリクエストしてください。"
+  
+  /auth/password/reset:
+    post:
+      summary: パスワードをリセット
+      description: 新しいパスワードでユーザーアカウントを更新します
+      operationId: resetPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetUpdateRequest'
+      responses:
+        '200':
+          description: パスワードがリセットされました
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "パスワードが正常にリセットされました。新しいパスワードでログインしてください。"
+        '422':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "入力内容に問題があります"
+                  errors:
+                    type: object
+                    properties:
+                      token:
+                        type: array
+                        items:
+                          type: string
+                        example:
+                          - "トークンは必須です"
+                      email:
+                        type: array
+                        items:
+                          type: string
+                        example:
+                          - "メールアドレスは必須です"
+                          - "正しいメールアドレス形式で入力してください"
+                      password:
+                        type: array
+                        items:
+                          type: string
+                        example:
+                          - "パスワードは必須です"
+                          - "パスワードは8文字以上で入力してください"
+                      password_confirmation:
+                        type: array
+                        items:
+                          type: string
+                        example:
+                          - "パスワード確認は必須です"
+                          - "パスワードと一致していません"
+        '400':
+          description: 無効なトークンまたは期限切れ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "無効なトークンまたは期限切れです。再度パスワードリセットをリクエストしてください。" 
