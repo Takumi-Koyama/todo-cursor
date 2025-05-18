@@ -135,10 +135,7 @@ components:
       properties:
         message:
           type: string
-          example: "認証に失敗しました"
-        error:
-          type: string
-          example: "メールアドレスまたはパスワードが正しくありません"
+          example: "Unauthenticated."
   
   securitySchemes:
     bearerAuth:
