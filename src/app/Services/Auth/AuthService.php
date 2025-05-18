@@ -52,4 +52,18 @@ class AuthService
             'expires_in' => $expiresIn
         ];
     }
+    
+    /**
+     * ユーザーをログアウトさせる（現在のアクセストークンを削除）
+     *
+     * @param \App\Models\User|null $user ログアウト対象のユーザー
+     * @return void
+     */
+    public function logoutUser(?User $user): void
+    {
+        // 認証済みユーザーの場合のみトークンを削除
+        if ($user) {
+            $user->currentAccessToken()->delete();
+        }
+    }
 } 
