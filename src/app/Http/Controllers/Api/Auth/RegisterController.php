@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Auth\RegisterRequest;
-use App\Http\Resources\UserResource;
+use App\Http\Resources\Auth\RegisterResource;
 use App\Services\Auth\AuthService;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\JsonResource;
 
 class RegisterController extends Controller
 {
@@ -15,9 +15,9 @@ class RegisterController extends Controller
      *
      * @param  \App\Http\Requests\Api\Auth\RegisterRequest  $request
      * @param  \App\Services\Auth\AuthService  $authService
-     * @return \Illuminate\Http\JsonResponse
+     * @return \App\Http\Resources\Auth\RegisterResource
      */
-    public function register(RegisterRequest $request, AuthService $authService): JsonResponse
+    public function register(RegisterRequest $request, AuthService $authService): JsonResource
     {
         // バリデーション済みデータの取得
         $validated = $request->validated();
@@ -25,9 +25,7 @@ class RegisterController extends Controller
         // ユーザー作成（AuthServiceに委譲）
         $user = $authService->registerUser($validated);
 
-        return response()->json([
-            'message' => 'ユーザー登録が完了しました',
-            'user' => new UserResource($user)
-        ], 201);
+        // リソースを使用してレスポンスを返却
+        return new RegisterResource($user);
     }
 } 

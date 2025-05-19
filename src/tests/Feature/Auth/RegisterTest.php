@@ -22,6 +22,8 @@ class RegisterTest extends TestCase
             'password_confirmation' => 'password123',
         ]);
 
+        // ※明示的に201を返してはいないが、Laravelのデフォルトで変換されるので注意
+        // https://github.com/mathieutu/framework/blob/f8af1166169d98a12af54aae8ceff87cea55bbbd/src/Illuminate/Routing/Router.php#L704-L705
         $response
             ->assertStatus(201)
             ->assertJsonStructure([
